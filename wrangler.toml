@@ -1,0 +1,14 @@
+
+name = "database-karyawan"
+main = "src/index.js"
+compatibility_date = "2026-11-16"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "peopledesk_db"
+database_id = "c75235a7-4a67-458c-a7ef-b4e2542afc60"
