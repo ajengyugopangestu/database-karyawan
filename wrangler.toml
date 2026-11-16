@@ -12,3 +12,8 @@ run_worker_first = ["/api/*"]
 binding = "DB"
 database_name = "peopledesk_db"
 database_id = "c75235a7-4a67-458c-a7ef-b4e2542afc60"
+
+
+[observability]
+enabled = true
+head_sampling_rate = 1
