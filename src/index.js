@@ -476,6 +476,19 @@ async function handleApi(request, env) {
 
 export default {
   async fetch(request, env) {
+    
+
+
+if (url.pathname === "/api/debug-secret") {
+  return Response.json({
+    secretConfigured: Boolean(env.BOOTSTRAP_SECRET),
+    secretLength: env.BOOTSTRAP_SECRET
+      ? env.BOOTSTRAP_SECRET.length
+      : 0,
+    worker: "database-karyawan"
+  });
+}
+
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
