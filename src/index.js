@@ -474,21 +474,9 @@ async function handleApi(request, env) {
   return json({ success: false, message: "Endpoint tidak ditemukan." }, 404);
 }
 
+
 export default {
   async fetch(request, env) {
-    
-
-
-if (url.pathname === "/api/debug-secret") {
-  return Response.json({
-    secretConfigured: Boolean(env.BOOTSTRAP_SECRET),
-    secretLength: env.BOOTSTRAP_SECRET
-      ? env.BOOTSTRAP_SECRET.length
-      : 0,
-    worker: "database-karyawan"
-  });
-}
-
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
@@ -506,3 +494,4 @@ if (url.pathname === "/api/debug-secret") {
     return env.ASSETS.fetch(request);
   }
 };
+
