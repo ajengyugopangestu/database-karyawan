@@ -27,6 +27,7 @@ const COLUMN_MAP = {
   status: "status"
 };
 
+
 function json(data, status = 200, headers = {}) {
   return Response.json(data, {
     status,
