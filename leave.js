@@ -1,7 +1,7 @@
 (function(){
   const $=id=>document.getElementById(id);
   let requests=[],balances=[];
-  const manager=()=>window.currentUser&&["admin","hr"].includes(window.currentUser.role);
+  const manager=()=>currentUser&&["admin","hr"].includes(currentUser.role);
   const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
   const year=()=>$("leaveYear").value||String(new Date().getFullYear());
   const statusLabel=s=>({pending:"Menunggu",approved:"Disetujui",rejected:"Ditolak",cancelled:"Dibatalkan"}[s]||s);
@@ -52,5 +52,5 @@
     catch(err){showToast(err.message||"Gagal memproses pengajuan.");b.disabled=false;}
   });
   $("leaveYear").addEventListener("change",()=>loadLeave().catch(e=>showToast(e.message)));
-  const observer=setInterval(()=>{if(window.currentUser&&employees.length){prepareLeave();clearInterval(observer);}},400);
+  const observer=setInterval(()=>{if(currentUser&&employees.length){prepareLeave();clearInterval(observer);}},400);
 })();
