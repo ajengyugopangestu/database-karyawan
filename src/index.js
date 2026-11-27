@@ -522,7 +522,7 @@ async function handleApi(request, env) {
     if(!item)return json({success:false,message:"Pengajuan cuti tidak ditemukan."},404);
     if(item.status!=="pending")return json({success:false,message:"Pengajuan ini sudah diproses sebelumnya."},409);
     if(status==="approved"){
-      const used=await env.DB.prepare("SELECT COALESCE(SUM(days),0) AS total FROM leave_requests WHERE employee_id=? AND substr(start_date,1,4)=? AND status='approved' AND id!=?").bind(item.employee_id,item.start_date.slice(0,4),item.id).first();
+      const used=await env.DB.prepare("SELECT COALESCE(SUM(days),0) AS total FROM leave_requests WHERE employee_id=? AND substr(start_date,1,4)=? AND status IN ('approved','pending') AND id!=?").bind(item.employee_id,item.start_date.slice(0,4),item.id).first();
       if(Number(used.total)+Number(item.days)>12)return json({success:false,message:"Kuota cuti tahunan karyawan tidak mencukupi untuk persetujuan ini."},400);
     }
     await env.DB.prepare("UPDATE leave_requests SET status=?,decision_note=?,decided_by=?,decided_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(status,note,user.id,item.id).run();
