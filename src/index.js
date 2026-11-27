@@ -197,6 +197,8 @@ async function currentUser(request, env) {
     "UPDATE sessions SET expires_at = ? WHERE id = ?"
   ).bind(newExpiry, result.session_id).run();
 
+  // Digunakan untuk memperbarui masa berlaku cookie browser juga.
+  result.session_token = token;
   return result;
 }
 
@@ -410,6 +412,8 @@ async function handleApi(request, env) {
         fullName: user.full_name,
         role: user.role
       }
+    }, 200, {
+      "Set-Cookie": sessionCookie(user.session_token)
     });
   }
 
