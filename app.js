@@ -49,6 +49,14 @@ async function loadEmployees() {
     refresh();
 }
 
+async function loadUsers() {
+    if (currentUser?.role !== "admin") {
+        throw new Error("Hanya Admin yang dapat mengakses manajemen pengguna.");
+    }
+    const result = await apiRequest("/api/users", { method: "GET" });
+    renderUsers(Array.isArray(result.users) ? result.users : []);
+}
+
 async function loadCurrentUser() {
     const result = await apiRequest("/api/me", { method: "GET" });
     currentUser = result.user;
@@ -58,6 +66,7 @@ async function loadCurrentUser() {
     $("userRole").textContent = String(currentUser.role || "user").toUpperCase();
     $("userAvatar").textContent = initials(name);
     document.querySelectorAll("[data-manage-only]").forEach(el => el.hidden = !canManageEmployees);
+    document.querySelectorAll("[data-admin-only]").forEach(el => el.hidden = currentUser.role !== "admin");
     $("storageStatus").textContent = "Cloudflare D1";
 }
 
@@ -262,14 +271,21 @@ function showPage(page) {
         el.classList.toggle("active", el.dataset.page === page);
     });
 
-    $("pageTitle").textContent =
-        page === "dashboard" ? "Dashboard" : "Data Karyawan";
+    if (page === "users" && currentUser?.role !== "admin") {
+        showPage("dashboard");
+        return;
+    }
+
+    $("pageTitle").textContent = ({
+        dashboard: "Dashboard",
+        employees: "Data Karyawan",
+        users: "Manajemen Pengguna"
+    })[page] || "Dashboard";
 
     $("sidebar").classList.remove("open");
 
-    if (page === "employees") {
-        renderEmployees();
-    }
+    if (page === "employees") renderEmployees();
+    if (page === "users") loadUsers().catch(error => showToast(error.message || "Gagal memuat akun pengguna."));
 
     window.scrollTo({
         top: 0,
@@ -291,6 +307,116 @@ document.querySelectorAll("[data-go]").forEach(btn => {
 
 $("menuToggle").addEventListener("click", () => {
     $("sidebar").classList.toggle("open");
+});
+
+// ======================================
+// MANAJEMEN PENGGUNA (ADMIN)
+// ======================================
+
+let managedUsers = [];
+
+function renderUsers(users) {
+    managedUsers = users;
+    $("userTableCount").textContent = `${users.length} akun terdaftar`;
+    $("emptyUsersState").hidden = users.length !== 0;
+    $("userTable").innerHTML = users.map(account => `
+        <tr>
+            <td><div class="person-cell"><div class="person-avatar">${escapeHTML(initials(account.fullName))}</div>${escapeHTML(account.fullName)}</div></td>
+            <td>${escapeHTML(account.username)}</td>
+            <td><span class="role-chip role-${escapeHTML(account.role)}">${escapeHTML(account.role.toUpperCase())}</span></td>
+            <td><span class="account-status ${account.isActive ? "is-active" : "is-inactive"}">${account.isActive ? "Aktif" : "Nonaktif"}</span></td>
+            <td><button class="action-btn" data-edit-user="${escapeHTML(account.id)}">Kelola</button></td>
+        </tr>
+    `).join("");
+}
+
+function openUserModal(account = null) {
+    $("userForm").reset();
+    $("userFormError").textContent = "";
+    $("userEditId").value = account?.id || "";
+    $("userModalTitle").textContent = account ? "Edit Akun Pengguna" : "Tambah Pengguna";
+    $("saveUserBtn").textContent = account ? "Simpan Perubahan" : "Buat Akun";
+    $("accountFullName").value = account?.fullName || "";
+    $("accountUsername").value = account?.username || "";
+    $("accountUsername").readOnly = Boolean(account);
+    $("accountRole").value = account?.role || "user";
+    $("accountActive").value = account?.isActive ? "1" : "0";
+    $("accountActive").disabled = !account;
+    $("accountPassword").value = "";
+    $("accountPassword").required = !account;
+    $("accountPassword").placeholder = account ? "Kosongkan jika tidak ingin mengubah password" : "Minimal 12 karakter";
+    $("passwordHint").textContent = account
+        ? "Opsional saat edit. Isi minimal 12 karakter jika ingin mengganti password."
+        : "Wajib diisi, minimal 12 karakter.";
+    $("userModal").hidden = false;
+    document.body.style.overflow = "hidden";
+}
+
+function closeUserModal() {
+    $("userModal").hidden = true;
+    document.body.style.overflow = "";
+}
+
+$("addUserBtn").addEventListener("click", () => {
+    if (currentUser?.role !== "admin") return showToast("Akses hanya untuk Admin.");
+    openUserModal();
+});
+
+["closeUserModal", "cancelUserModal"].forEach(id => {
+    $(id).addEventListener("click", closeUserModal);
+});
+
+$("userModal").addEventListener("click", event => {
+    if (event.target === $("userModal")) closeUserModal();
+});
+
+$("userTable").addEventListener("click", event => {
+    const button = event.target.closest("[data-edit-user]");
+    if (!button || currentUser?.role !== "admin") return;
+    const account = managedUsers.find(item => item.id === button.dataset.editUser);
+    if (account) openUserModal(account);
+});
+
+$("userForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (currentUser?.role !== "admin") return showToast("Akses hanya untuk Admin.");
+
+    const id = $("userEditId").value;
+    const password = $("accountPassword").value;
+    if ((!id && password.length < 12) || (password && password.length < 12)) {
+        $("userFormError").textContent = "Password harus minimal 12 karakter.";
+        return;
+    }
+
+    const payload = {
+        fullName: $("accountFullName").value.trim(),
+        username: $("accountUsername").value.trim(),
+        password,
+        role: $("accountRole").value
+    };
+
+    if (id) {
+        payload.isActive = $("accountActive").value === "1";
+    }
+
+    $("saveUserBtn").disabled = true;
+    $("saveUserBtn").textContent = "Menyimpan...";
+    $("userFormError").textContent = "";
+
+    try {
+        const result = await apiRequest(id ? `/api/users/${encodeURIComponent(id)}` : "/api/users", {
+            method: id ? "PUT" : "POST",
+            body: JSON.stringify(payload)
+        });
+        closeUserModal();
+        await loadUsers();
+        showToast(result.message || "Akun berhasil disimpan.");
+    } catch (error) {
+        $("userFormError").textContent = error.message || "Gagal menyimpan akun.";
+    } finally {
+        $("saveUserBtn").disabled = false;
+        $("saveUserBtn").textContent = id ? "Simpan Perubahan" : "Buat Akun";
+    }
 });
 
 // ======================================
