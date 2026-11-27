@@ -176,3 +176,18 @@ body.auth-pending .sidebar,body.auth-pending .main{display:none}
 .logout-btn{padding:8px 11px}
 [data-manage-only][hidden]{display:none!important}
 @media(max-width:700px){.login-card{padding:27px 22px}.user-info{display:none}.logout-btn{font-size:10px;padding:8px}}
+
+
+/* QR biodata offline privacy notice */
+.qr-privacy-note {
+    max-width: 520px;
+    margin: 14px auto 0;
+    padding: 10px 12px;
+    border: 1px solid #f0d9a8;
+    border-radius: 10px;
+    background: #fffaf0;
+    color: #76551b;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: left;
+}
