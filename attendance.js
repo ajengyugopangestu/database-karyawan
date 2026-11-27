@@ -49,8 +49,9 @@
   $('attendanceExport').addEventListener('click',()=>{
     const list=filtered(),month=monthValue();
     if(!window.XLSX){showToast('Library Excel belum termuat. Periksa koneksi internet lalu coba lagi.');return;}
-    const byEmployee=new Map();
-    list.forEach(r=>{if(!byEmployee.has(r.employeeId))byEmployee.set(r.employeeId,{nik:r.nik,name:r.name,department:r.department||'',Hadir:0,Izin:0,Sakit:0,Cuti:0,Alpha:0,total:0});const x=byEmployee.get(r.employeeId);x[r.status]=(x[r.status]||0)+1;x.total++;});
+    const visibleEmployees=employees.filter(e=>(isManager()||String(e.name).toLowerCase()===String(currentUser.fullName||'').toLowerCase())&&(!$('attendanceDepartment').value||e.department===$('attendanceDepartment').value)&&(! $('attendanceSearch').value.trim()||String(e.name).toLowerCase().includes($('attendanceSearch').value.trim().toLowerCase())||String(e.nik).toLowerCase().includes($('attendanceSearch').value.trim().toLowerCase())));
+    const byEmployee=new Map(visibleEmployees.map(e=>[String(e.id),{nik:e.nik,name:e.name,department:e.department||'',Hadir:0,Izin:0,Sakit:0,Cuti:0,Alpha:0,total:0}]));
+    list.forEach(r=>{if(!byEmployee.has(String(r.employeeId)))byEmployee.set(String(r.employeeId),{nik:r.nik,name:r.name,department:r.department||'',Hadir:0,Izin:0,Sakit:0,Cuti:0,Alpha:0,total:0});const x=byEmployee.get(String(r.employeeId));x[r.status]=(x[r.status]||0)+1;x.total++;});
     const summary=[...byEmployee.values()].map(x=>({'NIK':x.nik,'Nama Karyawan':x.name,'Departemen':x.department,'Hadir':x.Hadir,'Izin':x.Izin,'Sakit':x.Sakit,'Cuti':x.Cuti,'Alpha':x.Alpha,'Total Catatan':x.total,'Persentase Hadir':x.total?Math.round(x.Hadir/x.total*10000)/100+'%':'0%'}));
     const detail=list.map(r=>({'Tanggal':r.attendanceDate,'NIK':r.nik,'Nama Karyawan':r.name,'Departemen':r.department||'','Status':r.status,'Jam Masuk':r.checkIn||'','Jam Pulang':r.checkOut||'','Keterangan':r.notes||''}));
     const wb=XLSX.utils.book_new();
