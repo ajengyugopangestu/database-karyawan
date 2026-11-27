@@ -43,6 +43,12 @@
 
     <section class="page active" id="dashboardPage">
       <div class="welcome"><div><h2>Selamat datang 👋</h2><p>Berikut ringkasan data karyawan perusahaan Anda.</p></div><button class="btn btn-primary" id="addFromDashboard" data-manage-only>＋ Tambah Karyawan</button></div>
+      <section class="birthday-card" aria-labelledby="birthdayHeading">
+        <div class="birthday-heading"><div><div class="birthday-kicker">EMPLOYEE REMINDERS</div><h3 id="birthdayHeading">🎂 Pengingat Ulang Tahun</h3><p>Notifikasi ulang tahun hari ini dan pengingat H-3.</p></div>
+          <button class="btn btn-light birthday-notify-btn" id="enableBirthdayNotifications" type="button">Aktifkan Notifikasi Browser</button></div>
+        <div id="birthdaySummary" class="birthday-summary" aria-live="polite">Memeriksa tanggal ulang tahun...</div>
+        <div id="birthdayList" class="birthday-list"></div>
+      </section>
       <div class="stats-grid">
         <article class="stat-card"><div class="stat-icon blue">♙</div><div class="stat-label">Total Karyawan</div><div class="stat-value" id="totalEmployees">0</div><div class="stat-foot">Seluruh data terdaftar</div></article>
         <article class="stat-card"><div class="stat-icon green">✓</div><div class="stat-label">Karyawan Tetap</div><div class="stat-value" id="permanentEmployees">0</div><div class="stat-foot">Status kepegawaian tetap</div></article>
