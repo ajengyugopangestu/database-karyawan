@@ -29,7 +29,6 @@
     <div class="nav-label">MENU UTAMA</div>
     <button class="nav-item active" data-page="dashboard"><span>▦</span> Dashboard</button>
     <button class="nav-item" data-page="employees"><span>♙</span> Data Karyawan</button>
-    <button class="nav-item" data-page="users" data-admin-only hidden><span>♧</span> Manajemen Pengguna</button>
     <div class="sidebar-note"><strong>Employee Management</strong><p>Kelola informasi karyawan dalam satu aplikasi.</p></div>
     <div class="sidebar-footer">Database Karyawan · Cloud Database</div>
   </aside>
@@ -67,16 +66,16 @@
         <div class="search-wrap"><span>⌕</span><input id="searchInput" type="search" placeholder="Cari nama atau NIK karyawan..."></div>
         <select id="departmentFilter" aria-label="Filter departemen"><option value="">Semua Departemen</option></select>
         <select id="statusFilter" aria-label="Filter status"><option value="">Semua Status</option><option>Tetap</option><option>Kontrak</option><option>Magang</option></select>
-        <button class="btn btn-light" id="exportBtn">⇩ Export CSV</button>
+        <button class="btn btn-light" id="exportBtn" data-manage-only>⇩ Export CSV</button>
         <button class="btn btn-primary" id="addEmployeeBtn" data-manage-only>＋ Tambah Karyawan</button>
       </div>
       <div class="content-card">
         <div class="card-heading"><div><h3>Daftar Karyawan</h3><p id="tableCount">0 data karyawan</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Nama Karyawan</th><th>NIK</th><th>Departemen</th><th>Jabatan</th><th>Tanggal Masuk</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="employeeTable"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Nama Karyawan</th><th>NIK</th><th>Departemen</th><th>Jabatan</th><th>Tanggal Masuk</th><th>Status</th><th id="employeeActionHeading">Aksi</th></tr></thead><tbody id="employeeTable"></tbody></table></div>
         <div class="empty-state" id="emptyState" hidden><div class="empty-icon">♙</div><strong>Data karyawan belum tersedia</strong><p>Tambahkan data karyawan untuk mulai menggunakan aplikasi.</p><button class="btn btn-primary" id="emptyAddBtn" data-manage-only>＋ Tambah Karyawan</button></div>
       </div>
     </section>
-    <section class="page" id="usersPage">
+    <section class="page" id="usersPage" hidden>
       <div class="welcome">
         <div><h2>Manajemen Pengguna</h2><p>Kelola akun yang dapat mengakses PeopleDesk.</p></div>
         <button class="btn btn-primary" id="addUserBtn">＋ Tambah Pengguna</button>
