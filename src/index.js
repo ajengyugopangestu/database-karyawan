@@ -513,12 +513,12 @@ async function handleApi(request, env) {
     return json({success:true,message:"Pengajuan cuti berhasil dikirim dan menunggu persetujuan Admin/HR.",days});
   }
 
-  const leaveMatch=path.match(/^\\/api\\/leave-requests\\/(\d+)$/);
-  if(leaveMatch && method==="PUT"){
+  const leaveId=path.startsWith("/api/leave-requests/") ? path.slice("/api/leave-requests/".length) : "";
+  if(leaveId && /^\d+$/.test(leaveId) && method==="PUT"){
     if(!canManage(user))return json({success:false,message:"Hanya Admin/HR yang dapat memproses pengajuan cuti."},403);
     const body=await readBody(request),status=String(body?.status||""),note=String(body?.decisionNote||"").trim().slice(0,500);
     if(!["approved","rejected"].includes(status))return json({success:false,message:"Status keputusan tidak valid."},400);
-    const item=await env.DB.prepare("SELECT * FROM leave_requests WHERE id=?").bind(Number(leaveMatch[1])).first();
+    const item=await env.DB.prepare("SELECT * FROM leave_requests WHERE id=?").bind(Number(leaveId)).first();
     if(!item)return json({success:false,message:"Pengajuan cuti tidak ditemukan."},404);
     if(item.status!=="pending")return json({success:false,message:"Pengajuan ini sudah diproses sebelumnya."},409);
     if(status==="approved"){
