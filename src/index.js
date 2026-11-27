@@ -435,6 +435,37 @@ async function handleApi(request, env) {
     return json({ success: true, message: "Password berhasil diperbarui. Sesi pada perangkat lain telah dicabut." });
   }
 
+  // ABSENSI HARIAN DAN REKAP BULANAN
+  if (path === "/api/attendance" && method === "GET") {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, employee_id INTEGER NOT NULL, attendance_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('Hadir','Izin','Sakit','Cuti','Alpha')), check_in TEXT DEFAULT '', check_out TEXT DEFAULT '', notes TEXT DEFAULT '', created_by INTEGER, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(employee_id, attendance_date), FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE)`).run();
+    const month = url.searchParams.get("month") || new Date().toISOString().slice(0, 7);
+    if (!/^\\d{4}-\\d{2}$/.test(month)) return json({ success: false, message: "Format bulan tidak valid." }, 400);
+    let employeeId = null;
+    if (!canManage(user)) {
+      const matches = await env.DB.prepare("SELECT id FROM employees WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 2").bind(user.full_name || "").all();
+      if (!matches.results.length) return json({ success: false, message: "Akun Anda belum terhubung dengan data karyawan. Hubungi Admin/HR." }, 404);
+      if (matches.results.length > 1) return json({ success: false, message: "Nama akun cocok dengan lebih dari satu karyawan. Hubungi Admin/HR untuk pemeriksaan data." }, 409);
+      employeeId = matches.results[0].id;
+    }
+    const query = canManage(user) ? `SELECT a.id, a.employee_id AS employeeId, a.attendance_date AS attendanceDate, a.status, a.check_in AS checkIn, a.check_out AS checkOut, a.notes, e.nik, e.name, e.department FROM attendance a JOIN employees e ON e.id=a.employee_id WHERE substr(a.attendance_date,1,7)=? ORDER BY a.attendance_date DESC,e.name ASC` : `SELECT a.id, a.employee_id AS employeeId, a.attendance_date AS attendanceDate, a.status, a.check_in AS checkIn, a.check_out AS checkOut, a.notes, e.nik, e.name, e.department FROM attendance a JOIN employees e ON e.id=a.employee_id WHERE substr(a.attendance_date,1,7)=? AND a.employee_id=? ORDER BY a.attendance_date DESC`;
+    const result = canManage(user) ? await env.DB.prepare(query).bind(month).all() : await env.DB.prepare(query).bind(month, employeeId).all();
+    return json({ success: true, month, attendance: result.results });
+  }
+
+  if (path === "/api/attendance" && method === "POST") {
+    if (!canManage(user)) return json({ success: false, message: "Hanya Admin/HR yang dapat mencatat atau mengubah absensi." }, 403);
+    const body = await readBody(request);
+    const employeeId = Number(body?.employeeId), date = String(body?.date || ""), status = String(body?.status || "");
+    const checkIn = String(body?.checkIn || ""), checkOut = String(body?.checkOut || ""), notes = String(body?.notes || "").trim().slice(0,500);
+    if (!Number.isInteger(employeeId) || employeeId < 1 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return json({ success: false, message: "Karyawan atau tanggal tidak valid." }, 400);
+    if (!["Hadir","Izin","Sakit","Cuti","Alpha"].includes(status)) return json({ success: false, message: "Status absensi tidak valid." }, 400);
+    if ((checkIn && !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(checkIn)) || (checkOut && !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(checkOut))) return json({ success: false, message: "Format jam harus HH:MM." }, 400);
+    const employee = await env.DB.prepare("SELECT id FROM employees WHERE id=?").bind(employeeId).first();
+    if (!employee) return json({ success: false, message: "Data karyawan tidak ditemukan." }, 404);
+    await env.DB.prepare("INSERT INTO attendance (employee_id, attendance_date, status, check_in, check_out, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(employee_id,attendance_date) DO UPDATE SET status=excluded.status,check_in=excluded.check_in,check_out=excluded.check_out,notes=excluded.notes,created_by=excluded.created_by,updated_at=CURRENT_TIMESTAMP").bind(employeeId,date,status,checkIn,checkOut,notes,user.id).run();
+    return json({ success: true, message: "Absensi berhasil disimpan." });
+  }
+
   // DAFTAR KARYAWAN
   if (path === "/api/employees" && method === "GET") {
     const result = await env.DB.prepare(
