@@ -506,3 +506,5 @@ button.calendar-day{cursor:pointer}.calendar-day.muted{border:0;background:trans
 .settings-note{padding:0 20px 18px;font-size:12px}.settings-list{padding:0 20px 18px}.settings-list div{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #edf0f5;gap:15px}.settings-list span{color:#75839a}
 @media(max-width:850px){.two-column-grid{grid-template-columns:1fr}.password-form{grid-template-columns:1fr}.calendar-day{min-height:58px;padding:5px}.calendar-day small{font-size:9px}}
 @media print{body *{visibility:hidden!important}#reportsPage,#reportsPage *{visibility:visible!important}#reportsPage{position:absolute;left:0;top:0;width:100%;display:block!important}.sidebar,.topbar,.app-footer,.welcome button{display:none!important}.content-card{box-shadow:none!important}}
+/* Flexible KPI cards for the expanded dashboard */
+.stats-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
