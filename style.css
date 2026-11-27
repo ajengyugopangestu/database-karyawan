@@ -153,3 +153,26 @@
     }
 }
 
+
+
+/* Login and cloud database */
+.login-screen{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,#f5f7fb 0%,#eaf0ff 100%)}
+body.auth-pending .login-screen{display:flex}
+body.auth-pending .sidebar,body.auth-pending .main{display:none}
+.login-card{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;padding:36px;box-shadow:0 18px 55px #172b4d12}
+.login-brand{padding:0 0 30px}
+.login-card h1{font:800 23px 'Plus Jakarta Sans';color:var(--navy);margin:12px 0 8px}
+.login-description{font-size:13px;line-height:1.6;color:var(--muted);margin:0 0 25px}
+.login-card form{display:flex;flex-direction:column;gap:9px}
+.login-card label{font-size:12px;font-weight:700;color:#64728a;margin-top:7px}
+.login-card input{height:43px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font-size:13px;outline:none}
+.login-card input:focus{border-color:#7e9df2;box-shadow:0 0 0 3px #edf2ff}
+.login-submit{height:43px;margin-top:12px}
+.login-error{min-height:17px;color:#d34d4d;font-size:11px;line-height:1.5}
+.login-foot{border-top:1px solid var(--line);margin-top:24px;padding-top:17px;color:#9aa5b7;font-size:11px;text-align:center}
+.user-info{display:flex;flex-direction:column;gap:2px}
+.user-info strong{font-size:11px;color:var(--navy)}
+.user-info small{font-size:9px;letter-spacing:.7px;color:var(--muted)}
+.logout-btn{padding:8px 11px}
+[data-manage-only][hidden]{display:none!important}
+@media(max-width:700px){.login-card{padding:27px 22px}.user-info{display:none}.logout-btn{font-size:10px;padding:8px}}
