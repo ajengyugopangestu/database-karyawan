@@ -435,6 +435,100 @@ async function handleApi(request, env) {
     return json({ success: true, message: "Password berhasil diperbarui. Sesi pada perangkat lain telah dicabut." });
   }
 
+  // PENGAJUAN CUTI DAN KUOTA TAHUNAN
+  if (path === "/api/leave-requests" && method === "GET") {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS leave_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      days INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','cancelled')),
+      decision_note TEXT DEFAULT '',
+      decided_by INTEGER,
+      decided_at TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )`).run();
+    const year = url.searchParams.get("year") || String(new Date().getFullYear());
+    if (!/^\\d{4}$/.test(year)) return json({ success:false, message:"Tahun tidak valid." },400);
+    let employee = null;
+    if (!canManage(user)) {
+      const matches = await env.DB.prepare("SELECT id, name, join_date, nik, department FROM employees WHERE LOWER(TRIM(name))=LOWER(TRIM(?)) LIMIT 2").bind(user.full_name || "").all();
+      if (!matches.results.length) return json({success:false,message:"Akun Anda belum terhubung dengan data karyawan. Hubungi Admin/HR."},404);
+      if (matches.results.length > 1) return json({success:false,message:"Nama akun cocok dengan lebih dari satu karyawan. Hubungi Admin/HR."},409);
+      employee = matches.results[0];
+    }
+    const rows = canManage(user)
+      ? await env.DB.prepare("SELECT l.*,e.name,e.nik,e.department,e.join_date AS joinDate FROM leave_requests l JOIN employees e ON e.id=l.employee_id WHERE substr(l.start_date,1,4)=? ORDER BY l.created_at DESC").bind(year).all()
+      : await env.DB.prepare("SELECT l.*,e.name,e.nik,e.department,e.join_date AS joinDate FROM leave_requests l JOIN employees e ON e.id=l.employee_id WHERE l.employee_id=? AND substr(l.start_date,1,4)=? ORDER BY l.created_at DESC").bind(employee.id,year).all();
+    const all = canManage(user) ? rows.results : rows.results;
+    const people = canManage(user)
+      ? await env.DB.prepare("SELECT id,name,nik,department,join_date AS joinDate FROM employees ORDER BY name").all()
+      : {results:[employee]};
+    const balances = people.results.map(person => {
+      const eligible = Boolean(person.joinDate && new Date(year+"-01-01T00:00:00Z") > new Date(new Date(person.joinDate+"T00:00:00Z").setUTCFullYear(new Date(person.joinDate+"T00:00:00Z").getUTCFullYear()+1)));
+      const personRows = all.filter(x=>Number(x.employee_id)===Number(person.id));
+      const approved = personRows.filter(x=>x.status==="approved").reduce((n,x)=>n+Number(x.days),0);
+      const pending = personRows.filter(x=>x.status==="pending").reduce((n,x)=>n+Number(x.days),0);
+      return {employeeId:String(person.id),name:person.name,nik:person.nik,department:person.department,joinDate:person.joinDate,eligible,quota:eligible?12:0,approved,pending,remaining:Math.max(0,(eligible?12:0)-approved-pending)};
+    });
+    return json({success:true,year,requests:rows.results.map(x=>({...x,employeeId:String(x.employee_id),startDate:x.start_date,endDate:x.end_date,decisionNote:x.decision_note||"",joinDate:x.joinDate})),balances});
+  }
+
+  if (path === "/api/leave-requests" && method === "POST") {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS leave_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, employee_id INTEGER NOT NULL, start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL, days INTEGER NOT NULL, reason TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','cancelled')),
+      decision_note TEXT DEFAULT '', decided_by INTEGER, decided_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE
+    )`).run();
+    const body=await readBody(request);
+    const start=String(body?.startDate||""), end=String(body?.endDate||""), reason=String(body?.reason||"").trim().slice(0,1000);
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(start)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)||end<start||!reason) return json({success:false,message:"Tanggal cuti atau alasan belum valid."},400);
+    let employee;
+    if(canManage(user) && body?.employeeId) employee=await env.DB.prepare("SELECT id,name,join_date FROM employees WHERE id=?").bind(Number(body.employeeId)).first();
+    else {
+      const matches=await env.DB.prepare("SELECT id,name,join_date FROM employees WHERE LOWER(TRIM(name))=LOWER(TRIM(?)) LIMIT 2").bind(user.full_name||"").all();
+      if(matches.results.length>1)return json({success:false,message:"Nama akun cocok dengan lebih dari satu karyawan. Hubungi Admin/HR."},409);
+      employee=matches.results[0];
+    }
+    if(!employee)return json({success:false,message:"Data karyawan tidak ditemukan atau akun belum terhubung."},404);
+    const join=employee.join_date;
+    const anniversary=join?new Date(join+"T00:00:00Z"):null;
+    if(!anniversary)return json({success:false,message:"Tanggal masuk karyawan belum diisi. Hubungi Admin/HR."},400);
+    anniversary.setUTCFullYear(anniversary.getUTCFullYear()+1);
+    if(!(new Date(start+"T00:00:00Z")>anniversary))return json({success:false,message:"Hak cuti tahunan 12 hari berlaku setelah masa kerja lebih dari 1 tahun pada tanggal mulai cuti."},403);
+    const countDays=(a,b)=>{let n=0;for(let d=new Date(a+"T00:00:00Z"),last=new Date(b+"T00:00:00Z");d<=last;d.setUTCDate(d.getUTCDate()+1)){const day=d.getUTCDay();if(day!==0&&day!==6)n++;}return n;};
+    const days=countDays(start,end);
+    if(days<1)return json({success:false,message:"Rentang cuti tidak memiliki hari kerja (Senin–Jumat)."},400);
+    const year=start.slice(0,4);
+    const overlap=await env.DB.prepare("SELECT id FROM leave_requests WHERE employee_id=? AND status IN ('pending','approved') AND NOT(end_date<? OR start_date>?) LIMIT 1").bind(employee.id,start,end).first();
+    if(overlap)return json({success:false,message:"Tanggal cuti bertabrakan dengan pengajuan lain yang masih menunggu atau sudah disetujui."},409);
+    const used=await env.DB.prepare("SELECT COALESCE(SUM(days),0) AS total FROM leave_requests WHERE employee_id=? AND substr(start_date,1,4)=? AND status IN ('pending','approved')").bind(employee.id,year).first();
+    if(Number(used.total)+days>12)return json({success:false,message:"Kuota cuti tidak mencukupi. Sisa kuota tahun "+year+" adalah "+Math.max(0,12-Number(used.total))+" hari."},400);
+    await env.DB.prepare("INSERT INTO leave_requests(employee_id,start_date,end_date,days,reason,status) VALUES(?,?,?,?,?,'pending')").bind(employee.id,start,end,days,reason).run();
+    return json({success:true,message:"Pengajuan cuti berhasil dikirim dan menunggu persetujuan Admin/HR.",days});
+  }
+
+  const leaveMatch=path.match(/^\\/api\\/leave-requests\\/(\\d+)$/);
+  if(leaveMatch && method==="PUT"){
+    if(!canManage(user))return json({success:false,message:"Hanya Admin/HR yang dapat memproses pengajuan cuti."},403);
+    const body=await readBody(request),status=String(body?.status||""),note=String(body?.decisionNote||"").trim().slice(0,500);
+    if(!["approved","rejected"].includes(status))return json({success:false,message:"Status keputusan tidak valid."},400);
+    const item=await env.DB.prepare("SELECT * FROM leave_requests WHERE id=?").bind(Number(leaveMatch[1])).first();
+    if(!item)return json({success:false,message:"Pengajuan cuti tidak ditemukan."},404);
+    if(item.status!=="pending")return json({success:false,message:"Pengajuan ini sudah diproses sebelumnya."},409);
+    if(status==="approved"){
+      const used=await env.DB.prepare("SELECT COALESCE(SUM(days),0) AS total FROM leave_requests WHERE employee_id=? AND substr(start_date,1,4)=? AND status='approved' AND id!=?").bind(item.employee_id,item.start_date.slice(0,4),item.id).first();
+      if(Number(used.total)+Number(item.days)>12)return json({success:false,message:"Kuota cuti tahunan karyawan tidak mencukupi untuk persetujuan ini."},400);
+    }
+    await env.DB.prepare("UPDATE leave_requests SET status=?,decision_note=?,decided_by=?,decided_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(status,note,user.id,item.id).run();
+    return json({success:true,message:status==="approved"?"Pengajuan cuti disetujui.":"Pengajuan cuti ditolak."});
+  }
+
   // ABSENSI HARIAN DAN REKAP BULANAN
   if (path === "/api/attendance" && method === "GET") {
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, employee_id INTEGER NOT NULL, attendance_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('Hadir','Izin','Sakit','Cuti','Alpha')), check_in TEXT DEFAULT '', check_out TEXT DEFAULT '', notes TEXT DEFAULT '', created_by INTEGER, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(employee_id, attendance_date), FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE)`).run();
