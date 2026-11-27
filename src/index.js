@@ -1,6 +1,7 @@
 
 const COOKIE_NAME = "peopledesk_session";
-const SESSION_DAYS = 1;
+const SESSION_IDLE_MINUTES = 20;
+const SESSION_IDLE_MS = SESSION_IDLE_MINUTES * 60 * 1000;
 const ITERATIONS = 100000;
 
 const EMPLOYEE_FIELDS = [
@@ -121,7 +122,7 @@ function getCookie(request, name) {
 }
 
 function sessionCookie(token) {
-  return `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_DAYS * 86400}`;
+  return `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_IDLE_MINUTES * 60}`;
 }
 
 function clearCookie() {
@@ -170,6 +171,7 @@ async function currentUser(request, env) {
 
   const tokenHash = await sha256(token);
 
+  const now = new Date().toISOString();
   const result = await env.DB.prepare(`
     SELECT
       s.id AS session_id,
@@ -184,9 +186,18 @@ async function currentUser(request, env) {
       AND s.expires_at > ?
       AND u.is_active = 1
     LIMIT 1
-  `).bind(tokenHash, new Date().toISOString()).first();
+  `).bind(tokenHash, now).first();
 
-  return result || null;
+  if (!result) return null;
+
+  // Sliding expiration: setiap request API yang terautentikasi
+  // memperpanjang masa berlaku sesi selama 20 menit sejak aktivitas terakhir.
+  const newExpiry = new Date(Date.now() + SESSION_IDLE_MS).toISOString();
+  await env.DB.prepare(
+    "UPDATE sessions SET expires_at = ? WHERE id = ?"
+  ).bind(newExpiry, result.session_id).run();
+
+  return result;
 }
 
 function canManage(user) {
@@ -197,7 +208,7 @@ async function createSession(env, userId) {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const token = base64url(bytes);
   const tokenHash = await sha256(token);
-  const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
+  const expires = new Date(Date.now() + SESSION_IDLE_MS).toISOString();
 
   await env.DB.prepare(`
     INSERT INTO sessions (user_id, token_hash, expires_at)
