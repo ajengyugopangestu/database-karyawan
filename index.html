@@ -6,25 +6,42 @@
   <title>HRIS - Data Karyawan</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="auth-pending">
+  <section class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="brand login-brand"><div class="brand-mark">HR</div><div><strong>PeopleDesk</strong><small>Human Resources</small></div></div>
+      <div class="eyebrow">HUMAN RESOURCES INFORMATION SYSTEM</div>
+      <h1>Selamat datang kembali</h1>
+      <p class="login-description">Masuk untuk mengakses dashboard dan data karyawan perusahaan.</p>
+      <form id="loginForm">
+        <label for="loginUsername">Username</label>
+        <input id="loginUsername" name="username" autocomplete="username" required placeholder="Masukkan username">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Masukkan password">
+        <div class="login-error" id="loginError" role="alert"></div>
+        <button class="btn btn-primary login-submit" id="loginSubmit" type="submit">Masuk ke PeopleDesk</button>
+      </form>
+      <div class="login-foot">Akses terbatas untuk pengguna terdaftar.</div>
+    </div>
+  </section>
   <aside class="sidebar" id="sidebar">
     <div class="brand"><div class="brand-mark">HR</div><div><strong>PeopleDesk</strong><small>Human Resources</small></div></div>
     <div class="nav-label">MENU UTAMA</div>
     <button class="nav-item active" data-page="dashboard"><span>▦</span> Dashboard</button>
     <button class="nav-item" data-page="employees"><span>♙</span> Data Karyawan</button>
     <div class="sidebar-note"><strong>Employee Management</strong><p>Kelola informasi karyawan dalam satu aplikasi.</p></div>
-    <div class="sidebar-footer">Local application · v1.0</div>
+    <div class="sidebar-footer">PeopleDesk · Cloud Database</div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <button class="menu-toggle" id="menuToggle" aria-label="Buka menu">☰</button>
       <div><div class="eyebrow">HUMAN RESOURCES INFORMATION SYSTEM</div><h1 id="pageTitle">Dashboard</h1></div>
-      <div class="top-actions"><span class="local-pill"><i></i> Data tersimpan lokal</span><div class="avatar">HR</div></div>
+      <div class="top-actions"><span class="local-pill"><i></i> <span id="storageStatus">Menghubungkan...</span></span><div class="user-info"><strong id="userName">User</strong><small id="userRole">USER</small></div><div class="avatar" id="userAvatar">HR</div><button class="btn btn-light logout-btn" id="logoutButton" type="button">Keluar</button></div>
     </header>
 
     <section class="page active" id="dashboardPage">
-      <div class="welcome"><div><h2>Selamat datang 👋</h2><p>Berikut ringkasan data karyawan perusahaan Anda.</p></div><button class="btn btn-primary" id="addFromDashboard">＋ Tambah Karyawan</button></div>
+      <div class="welcome"><div><h2>Selamat datang 👋</h2><p>Berikut ringkasan data karyawan perusahaan Anda.</p></div><button class="btn btn-primary" id="addFromDashboard" data-manage-only>＋ Tambah Karyawan</button></div>
       <div class="stats-grid">
         <article class="stat-card"><div class="stat-icon blue">♙</div><div class="stat-label">Total Karyawan</div><div class="stat-value" id="totalEmployees">0</div><div class="stat-foot">Seluruh data terdaftar</div></article>
         <article class="stat-card"><div class="stat-icon green">✓</div><div class="stat-label">Karyawan Tetap</div><div class="stat-value" id="permanentEmployees">0</div><div class="stat-foot">Status kepegawaian tetap</div></article>
@@ -35,7 +52,7 @@
         <div class="card-heading"><div><h3>Karyawan Terbaru</h3><p>Lima data karyawan yang terakhir ditambahkan.</p></div><button class="btn btn-light" data-go="employees">Lihat semua →</button></div>
         <div class="table-wrap"><table><thead><tr><th>Nama Karyawan</th><th>NIK</th><th>Departemen</th><th>Jabatan</th><th>Status</th></tr></thead><tbody id="recentTable"></tbody></table></div>
       </div>
-      <div class="notice"><strong>Catatan penyimpanan:</strong> Aplikasi ini menggunakan localStorage pada browser. Data hanya tersimpan pada browser dan perangkat yang digunakan. Gunakan fitur Export CSV secara berkala untuk membuat salinan data.</div>
+      <div class="notice"><strong>Database online:</strong> Data karyawan tersimpan pada Cloudflare D1 dan dapat diakses setelah login dari perangkat yang memiliki koneksi internet.</div>
     </section>
 
     <section class="page" id="employeesPage">
@@ -44,12 +61,12 @@
         <select id="departmentFilter" aria-label="Filter departemen"><option value="">Semua Departemen</option></select>
         <select id="statusFilter" aria-label="Filter status"><option value="">Semua Status</option><option>Tetap</option><option>Kontrak</option><option>Magang</option></select>
         <button class="btn btn-light" id="exportBtn">⇩ Export CSV</button>
-        <button class="btn btn-primary" id="addEmployeeBtn">＋ Tambah Karyawan</button>
+        <button class="btn btn-primary" id="addEmployeeBtn" data-manage-only>＋ Tambah Karyawan</button>
       </div>
       <div class="content-card">
         <div class="card-heading"><div><h3>Daftar Karyawan</h3><p id="tableCount">0 data karyawan</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Nama Karyawan</th><th>NIK</th><th>Departemen</th><th>Jabatan</th><th>Tanggal Masuk</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="employeeTable"></tbody></table></div>
-        <div class="empty-state" id="emptyState" hidden><div class="empty-icon">♙</div><strong>Data karyawan belum tersedia</strong><p>Tambahkan data karyawan untuk mulai menggunakan aplikasi.</p><button class="btn btn-primary" id="emptyAddBtn">＋ Tambah Karyawan</button></div>
+        <div class="empty-state" id="emptyState" hidden><div class="empty-icon">♙</div><strong>Data karyawan belum tersedia</strong><p>Tambahkan data karyawan untuk mulai menggunakan aplikasi.</p><button class="btn btn-primary" id="emptyAddBtn" data-manage-only>＋ Tambah Karyawan</button></div>
       </div>
     </section>
     <footer class="app-footer">PeopleDesk HRIS <span>•</span> Aplikasi pengelolaan data karyawan lokal</footer>
@@ -78,7 +95,7 @@
           <label>Status Karyawan <b>*</b><select id="status" required><option value="">Pilih status</option><option>Tetap</option><option>Kontrak</option><option>Magang</option></select></label>
         </div>
         <div class="form-error" id="formError" role="alert"></div>
-        <div class="modal-actions"><button type="button" class="btn btn-light" id="cancelModal">Batal</button><button type="submit" class="btn btn-primary">Simpan Data</button></div>
+        <div class="modal-actions"><button type="button" class="btn btn-light" id="cancelModal">Batal</button><button type="submit" class="btn btn-primary" data-manage-only>Simpan Data</button></div>
       </form>
     </section>
   </div>
