@@ -1,7 +1,7 @@
 
 const COOKIE_NAME = "peopledesk_session";
 const SESSION_DAYS = 1;
-const ITERATIONS = 310000;
+const ITERATIONS = 100000;
 
 const EMPLOYEE_FIELDS = [
   "nik", "name", "gender", "birthPlace", "birthDate",
