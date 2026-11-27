@@ -327,6 +327,10 @@ function renderEmployees() {
         </tr>
     `).join("");
 
+    $("employeeTable").querySelectorAll("[data-manage-only]").forEach(el => {
+        el.hidden = !canManageEmployees;
+    });
+
     $("emptyState").hidden = filtered.length !== 0;
 
     $("employeeTable").parentElement.style.display =
