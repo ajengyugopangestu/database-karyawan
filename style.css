@@ -191,3 +191,240 @@ body.auth-pending .sidebar,body.auth-pending .main{display:none}
     line-height: 1.6;
     text-align: left;
 }
+
+
+/* Mobile responsive improvements: employee detail/profile */
+@media (max-width: 700px) {
+    html, body {
+        width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+    }
+
+    .main {
+        width: 100%;
+        min-width: 0;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .topbar {
+        min-width: 0;
+    }
+
+    .topbar > div:nth-child(2) {
+        min-width: 0;
+    }
+
+    .topbar .eyebrow {
+        font-size: 8px;
+        letter-spacing: .6px;
+    }
+
+    .topbar h1 {
+        font-size: 17px;
+    }
+
+    .top-actions {
+        gap: 6px;
+    }
+
+    .detailModal,
+    #detailModal {
+        place-items: start center;
+        padding: 8px;
+        align-items: start;
+    }
+
+    .detail-sheet {
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100dvh - 16px);
+        padding: 10px;
+        border-radius: 12px;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .detail-toolbar {
+        position: sticky;
+        top: -10px;
+        z-index: 2;
+        background: #fff;
+        padding: 4px 0 9px;
+    }
+
+    .biodata-card {
+        width: 100%;
+        min-width: 0;
+        padding: 15px 10px;
+        overflow-wrap: anywhere;
+    }
+
+    .biodata-card h2 {
+        font-size: clamp(15px, 4.5vw, 19px);
+        margin: 5px 0 22px;
+        overflow-wrap: anywhere;
+    }
+
+    .biodata-card h3 {
+        font-size: 15px;
+        margin-bottom: 14px;
+    }
+
+    .biodata-info {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+        margin: 0 0 18px;
+    }
+
+    .biodata-avatar {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        font-size: 12px;
+    }
+
+    .biodata-info dl {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+
+    /* Detail rows contain a label and a value only. */
+    .detail-row {
+        display: grid;
+        grid-template-columns: minmax(86px, 34%) minmax(0, 1fr);
+        column-gap: 8px;
+        width: 100%;
+        font-size: clamp(10px, 2.9vw, 12px);
+        line-height: 1.5;
+        padding: 3px 0;
+    }
+
+    .detail-row dt,
+    .detail-row dd {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .company-details {
+        padding-left: 17px;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+
+    .company-details li strong {
+        min-width: 55px;
+    }
+
+    .company-details li span {
+        width: 10px;
+    }
+
+    .detail-extra {
+        margin: 14px 0 0 17px;
+        font-size: 11px;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+
+    .detail-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 10px 0 2px;
+    }
+
+    .detail-actions .btn {
+        width: 100%;
+        min-width: 0;
+        white-space: normal;
+        padding: 10px 7px;
+        font-size: 11px;
+    }
+
+    .detail-actions #closeDetailBottom {
+        grid-column: 1 / -1;
+    }
+
+    .barcode-panel {
+        padding: 12px 9px;
+        margin-top: 10px;
+    }
+
+    .barcode-heading {
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .barcode-heading small {
+        line-height: 1.5;
+    }
+
+    .barcode-paper {
+        padding: 12px 6px;
+    }
+
+    #employeeQRCode img,
+    #employeeQRCode canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+    }
+
+    .barcode-number {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        text-align: center;
+        font-size: 11px;
+        letter-spacing: 1px;
+    }
+
+    .qr-privacy-note {
+        font-size: 10px;
+        line-height: 1.5;
+    }
+
+    .barcode-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .barcode-actions button {
+        width: 100%;
+        min-width: 0;
+        white-space: normal;
+        padding: 10px 6px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 380px) {
+    .detail-row {
+        grid-template-columns: minmax(78px, 32%) minmax(0, 1fr);
+        column-gap: 6px;
+        font-size: 10px;
+    }
+
+    .biodata-info {
+        gap: 7px;
+    }
+
+    .detail-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-actions #closeDetailBottom {
+        grid-column: auto;
+    }
+
+    .detail-actions .btn {
+        width: 100%;
+    }
+}
