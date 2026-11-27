@@ -601,21 +601,42 @@ function generateEmployeeQRCode() {
         return;
     }
 
-    // URL aplikasi dengan parameter NIK
-    const qrData =
-        window.location.origin +
-        window.location.pathname +
-        "?nik=" + encodeURIComponent(employee.nik);
+    // QR berisi biodata dalam bentuk teks, bukan URL.
+    // Pemindai QR biasa dapat menampilkan teks ini tanpa membuka website
+    // dan tanpa membutuhkan koneksi internet.
+    const qrLines = [
+        "BIODATA KARYAWAN",
+        "PT PUTRANATA ADI MANDIRI",
+        "",
+        "Nama Lengkap: " + (employee.name || "-"),
+        "NIK: " + (employee.nik || "-"),
+        "Jenis Kelamin: " + (employee.gender || "-"),
+        "Tempat, Tanggal Lahir: " + [
+            employee.birthPlace,
+            formatDate(employee.birthDate)
+        ].filter(Boolean).join(", "),
+        "Email: " + (employee.email || "-"),
+        "Nomor Telepon: " + (employee.phone || "-"),
+        "Lokasi/Kantor: " + (employee.office || "-"),
+        "Pendidikan: " + (employee.education || "-"),
+        "Departemen: " + (employee.department || "-"),
+        "Jabatan: " + (employee.position || "-"),
+        "Tanggal Masuk: " + formatDate(employee.joinDate),
+        "Status Karyawan: " + (employee.status || "-"),
+        "",
+        "Informasi ini merupakan salinan data saat QR dibuat."
+    ];
 
+    const qrData = qrLines.join("\n");
     const qrContainer = $("employeeQRCode");
 
     qrContainer.innerHTML = "";
 
     new QRCode(qrContainer, {
         text: qrData,
-        width: 220,
-        height: 220,
-        correctLevel: QRCode.CorrectLevel.H
+        width: 240,
+        height: 240,
+        correctLevel: QRCode.CorrectLevel.M
     });
 
     $("qrcodeNumber").textContent = employee.nik;
