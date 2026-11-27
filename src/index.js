@@ -574,7 +574,7 @@ async function handleApi(request, env) {
   }
 
   // ADMIN MEMPERBARUI DATA, ROLE, STATUS, ATAU PASSWORD PENGGUNA
-  const userMatch = path.match(/^\\/api\\/users\\/(\\d+)$/);
+  const userMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (userMatch && method === "PUT") {
     if (user.role !== "admin") {
       return json({ success: false, message: "Hanya Admin yang dapat mengubah akun." }, 403);
