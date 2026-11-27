@@ -500,6 +500,8 @@ function renderDashboard() {
     $("contractEmployees").textContent =
         employees.filter(e => e.status === "Kontrak").length;
 
+    $("internEmployees").textContent = employees.filter(e => e.status === "Magang").length;
+
     $("departmentCount").textContent =
         new Set(
             employees
