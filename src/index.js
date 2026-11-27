@@ -452,7 +452,7 @@ async function handleApi(request, env) {
       FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE
     )`).run();
     const year = url.searchParams.get("year") || String(new Date().getFullYear());
-    if (!/^\\d{4}$/.test(year)) return json({ success:false, message:"Tahun tidak valid." },400);
+    if (!/^\d{4}$/.test(year)) return json({ success:false, message:"Tahun tidak valid." },400);
     let employee = null;
     if (!canManage(user)) {
       const matches = await env.DB.prepare("SELECT id, name, join_date, nik, department FROM employees WHERE LOWER(TRIM(name))=LOWER(TRIM(?)) LIMIT 2").bind(user.full_name || "").all();
@@ -468,7 +468,7 @@ async function handleApi(request, env) {
       ? await env.DB.prepare("SELECT id,name,nik,department,join_date AS joinDate FROM employees ORDER BY name").all()
       : {results:[employee]};
     const balances = people.results.map(person => {
-      const eligible = Boolean(person.joinDate && new Date(year+"-01-01T00:00:00Z") > new Date(new Date(person.joinDate+"T00:00:00Z").setUTCFullYear(new Date(person.joinDate+"T00:00:00Z").getUTCFullYear()+1)));
+      const eligible = Boolean(person.joinDate && new Date(year+"-12-31T00:00:00Z") > new Date(new Date(person.joinDate+"T00:00:00Z").setUTCFullYear(new Date(person.joinDate+"T00:00:00Z").getUTCFullYear()+1)));
       const personRows = all.filter(x=>Number(x.employee_id)===Number(person.id));
       const approved = personRows.filter(x=>x.status==="approved").reduce((n,x)=>n+Number(x.days),0);
       const pending = personRows.filter(x=>x.status==="pending").reduce((n,x)=>n+Number(x.days),0);
@@ -487,7 +487,7 @@ async function handleApi(request, env) {
     )`).run();
     const body=await readBody(request);
     const start=String(body?.startDate||""), end=String(body?.endDate||""), reason=String(body?.reason||"").trim().slice(0,1000);
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(start)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)||end<start||!reason) return json({success:false,message:"Tanggal cuti atau alasan belum valid."},400);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<start||start.slice(0,4)!==end.slice(0,4)||!reason) return json({success:false,message:"Tanggal cuti atau alasan belum valid."},400);
     let employee;
     if(canManage(user) && body?.employeeId) employee=await env.DB.prepare("SELECT id,name,join_date FROM employees WHERE id=?").bind(Number(body.employeeId)).first();
     else {
@@ -513,7 +513,7 @@ async function handleApi(request, env) {
     return json({success:true,message:"Pengajuan cuti berhasil dikirim dan menunggu persetujuan Admin/HR.",days});
   }
 
-  const leaveMatch=path.match(/^\\/api\\/leave-requests\\/(\\d+)$/);
+  const leaveMatch=path.match(/^\\/api\\/leave-requests\\/(\d+)$/);
   if(leaveMatch && method==="PUT"){
     if(!canManage(user))return json({success:false,message:"Hanya Admin/HR yang dapat memproses pengajuan cuti."},403);
     const body=await readBody(request),status=String(body?.status||""),note=String(body?.decisionNote||"").trim().slice(0,500);
