@@ -421,6 +421,20 @@ async function handleApi(request, env) {
   const user = await currentUser(request, env);
   if (!user) return json({ success: false, message: "Silakan login." }, 401);
 
+  // PENGGUNA MENGGANTI PASSWORD SENDIRI
+  if (path === "/api/change-password" && method === "POST") {
+    const body = await readBody(request);
+    const currentPassword = String(body?.currentPassword || "");
+    const newPassword = String(body?.newPassword || "");
+    if (newPassword.length < 12) return json({ success: false, message: "Password baru minimal 12 karakter." }, 400);
+    const account = await env.DB.prepare("SELECT password_hash FROM users WHERE id = ? LIMIT 1").bind(user.id).first();
+    if (!account || !(await verifyPassword(currentPassword, account.password_hash))) return json({ success: false, message: "Password saat ini tidak sesuai." }, 400);
+    const passwordHash = await hashPassword(newPassword);
+    await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(passwordHash, user.id).run();
+    await env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?").bind(user.id, user.session_id).run();
+    return json({ success: true, message: "Password berhasil diperbarui. Sesi pada perangkat lain telah dicabut." });
+  }
+
   // DAFTAR KARYAWAN
   if (path === "/api/employees" && method === "GET") {
     const result = await env.DB.prepare(
