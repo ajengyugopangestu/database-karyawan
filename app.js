@@ -61,6 +61,86 @@ async function loadCurrentUser() {
     $("storageStatus").textContent = "Cloudflare D1";
 }
 
+const IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+const SESSION_HEARTBEAT_MS = 5 * 60 * 1000;
+let idleTimeoutId = null;
+let sessionHeartbeatId = null;
+let lastUserActivity = 0;
+
+const activityEvents = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
+
+function stopSessionMonitoring() {
+    if (idleTimeoutId) clearTimeout(idleTimeoutId);
+    if (sessionHeartbeatId) clearInterval(sessionHeartbeatId);
+    idleTimeoutId = null;
+    sessionHeartbeatId = null;
+    activityEvents.forEach(eventName =>
+        document.removeEventListener(eventName, registerUserActivity)
+    );
+}
+
+function scheduleIdleTimeout() {
+    if (idleTimeoutId) clearTimeout(idleTimeoutId);
+    idleTimeoutId = setTimeout(expireIdleSession, IDLE_TIMEOUT_MS);
+}
+
+function registerUserActivity() {
+    if (!currentUser) return;
+    lastUserActivity = Date.now();
+    scheduleIdleTimeout();
+}
+
+async function expireIdleSession() {
+    stopSessionMonitoring();
+    try {
+        await apiRequest("/api/logout", { method: "POST", body: "{}" });
+    } catch (error) {
+        console.warn("Idle logout:", error);
+    }
+
+    currentUser = null;
+    employees = [];
+    canManageEmployees = false;
+    document.body.classList.remove("authenticated");
+    document.body.classList.add("auth-pending");
+    $("loginPassword").value = "";
+    $("loginError").textContent = "Sesi berakhir karena tidak ada aktivitas selama 20 menit. Silakan login kembali.";
+}
+
+function startSessionMonitoring() {
+    stopSessionMonitoring();
+    lastUserActivity = Date.now();
+    scheduleIdleTimeout();
+
+    activityEvents.forEach(eventName =>
+        document.addEventListener(eventName, registerUserActivity, { passive: true })
+    );
+
+    // Memperpanjang sesi di server selama pengguna masih aktif.
+    sessionHeartbeatId = setInterval(async () => {
+        if (!currentUser) return;
+        if (Date.now() - lastUserActivity >= IDLE_TIMEOUT_MS) {
+            await expireIdleSession();
+            return;
+        }
+        if (document.visibilityState !== "visible") return;
+
+        try {
+            await apiRequest("/api/me", { method: "GET" });
+        } catch (error) {
+            if (error.status === 401) {
+                stopSessionMonitoring();
+                currentUser = null;
+                employees = [];
+                document.body.classList.remove("authenticated");
+                document.body.classList.add("auth-pending");
+                $("loginPassword").value = "";
+                $("loginError").textContent = "Sesi login telah berakhir. Silakan login kembali.";
+            }
+        }
+    }, SESSION_HEARTBEAT_MS);
+}
+
 async function initializeApplication() {
     document.body.classList.add("auth-pending");
     try {
@@ -68,7 +148,9 @@ async function initializeApplication() {
         await loadEmployees();
         document.body.classList.remove("auth-pending");
         document.body.classList.add("authenticated");
+        startSessionMonitoring();
     } catch (error) {
+        stopSessionMonitoring();
         currentUser = null;
         document.body.classList.remove("authenticated");
         document.body.classList.add("auth-pending");
@@ -98,10 +180,12 @@ $("loginForm").addEventListener("submit", async event => {
 });
 
 $("logoutButton").addEventListener("click", async () => {
+    stopSessionMonitoring();
     try { await apiRequest("/api/logout", { method: "POST", body: "{}" }); }
     catch (error) { console.error("Logout:", error); }
     currentUser = null;
     employees = [];
+    canManageEmployees = false;
     document.body.classList.remove("authenticated");
     document.body.classList.add("auth-pending");
     $("loginPassword").value = "";
