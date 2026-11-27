@@ -439,7 +439,7 @@ async function handleApi(request, env) {
   if (path === "/api/attendance" && method === "GET") {
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, employee_id INTEGER NOT NULL, attendance_date TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('Hadir','Izin','Sakit','Cuti','Alpha')), check_in TEXT DEFAULT '', check_out TEXT DEFAULT '', notes TEXT DEFAULT '', created_by INTEGER, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(employee_id, attendance_date), FOREIGN KEY(employee_id) REFERENCES employees(id) ON DELETE CASCADE)`).run();
     const month = url.searchParams.get("month") || new Date().toISOString().slice(0, 7);
-    if (!/^\\d{4}-\\d{2}$/.test(month)) return json({ success: false, message: "Format bulan tidak valid." }, 400);
+    if (!/^\d{4}-\d{2}$/.test(month)) return json({ success: false, message: "Format bulan tidak valid." }, 400);
     let employeeId = null;
     if (!canManage(user)) {
       const matches = await env.DB.prepare("SELECT id FROM employees WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 2").bind(user.full_name || "").all();
@@ -457,9 +457,9 @@ async function handleApi(request, env) {
     const body = await readBody(request);
     const employeeId = Number(body?.employeeId), date = String(body?.date || ""), status = String(body?.status || "");
     const checkIn = String(body?.checkIn || ""), checkOut = String(body?.checkOut || ""), notes = String(body?.notes || "").trim().slice(0,500);
-    if (!Number.isInteger(employeeId) || employeeId < 1 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return json({ success: false, message: "Karyawan atau tanggal tidak valid." }, 400);
+    if (!Number.isInteger(employeeId) || employeeId < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ success: false, message: "Karyawan atau tanggal tidak valid." }, 400);
     if (!["Hadir","Izin","Sakit","Cuti","Alpha"].includes(status)) return json({ success: false, message: "Status absensi tidak valid." }, 400);
-    if ((checkIn && !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(checkIn)) || (checkOut && !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(checkOut))) return json({ success: false, message: "Format jam harus HH:MM." }, 400);
+    if ((checkIn && !/^([01]\d|2[0-3]):[0-5]\d$/.test(checkIn)) || (checkOut && !/^([01]\d|2[0-3]):[0-5]\d$/.test(checkOut))) return json({ success: false, message: "Format jam harus HH:MM." }, 400);
     const employee = await env.DB.prepare("SELECT id FROM employees WHERE id=?").bind(employeeId).first();
     if (!employee) return json({ success: false, message: "Data karyawan tidak ditemukan." }, 404);
     await env.DB.prepare("INSERT INTO attendance (employee_id, attendance_date, status, check_in, check_out, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(employee_id,attendance_date) DO UPDATE SET status=excluded.status,check_in=excluded.check_in,check_out=excluded.check_out,notes=excluded.notes,created_by=excluded.created_by,updated_at=CURRENT_TIMESTAMP").bind(employeeId,date,status,checkIn,checkOut,notes,user.id).run();
