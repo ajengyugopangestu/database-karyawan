@@ -428,3 +428,34 @@ body.auth-pending .sidebar,body.auth-pending .main{display:none}
         width: 100%;
     }
 }
+
+
+/* Admin user management */
+.role-chip,.account-status {
+    display:inline-flex;
+    align-items:center;
+    border-radius:20px;
+    padding:5px 9px;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.3px;
+}
+.role-admin {background:#f1edff;color:#7654c5}
+.role-hr {background:#eaf2ff;color:#3569e8}
+.role-user {background:#eef2f6;color:#65748a}
+.account-status.is-active {background:#e9f8f1;color:#239b67}
+.account-status.is-inactive {background:#fff0f0;color:#cf5555}
+.user-table {min-width:620px}
+.field-hint {font-size:10px;font-weight:400;color:#8a96a9;line-height:1.5}
+.account-active-field select:disabled {background:#f3f5f8;color:#9aa4b4}
+#userModal .form-grid {padding-bottom:18px}
+@media(max-width:700px) {
+    #usersPage .welcome {align-items:stretch}
+    #usersPage .welcome .btn {width:100%}
+    .user-modal {max-height:calc(100dvh - 24px)}
+    .user-modal .form-grid {grid-template-columns:1fr;padding:16px}
+    .user-modal .form-grid .full {grid-column:auto}
+    .user-modal .modal-header {padding:16px}
+    .user-modal .modal-actions {padding:12px 16px 16px}
+    .user-table {min-width:570px}
+}
