@@ -27,7 +27,6 @@ const COLUMN_MAP = {
   status: "status"
 };
 
-
 function json(data, status = 200, headers = {}) {
   return Response.json(data, {
     status,
@@ -221,7 +220,7 @@ async function handleApi(request, env) {
     return json({ success: false, message: "Origin tidak diizinkan." }, 403);
   }
 
-  // Status API
+  // STATUS API
   if (path === "/api/health" && method === "GET") {
     const result = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table'"
@@ -234,7 +233,71 @@ async function handleApi(request, env) {
     });
   }
 
-  // Membuat Admin pertama. Hanya dapat digunakan jika belum ada user.
+  // RESET PASSWORD ADMIN - TEMPORARY
+  // Hapus blok ini setelah proses reset password selesai.
+  if (path === "/api/reset-admin-password" && method === "POST") {
+    if (!env.ADMIN_RESET_SECRET) {
+      return json({
+        success: false,
+        message: "Reset secret belum dikonfigurasi."
+      }, 503);
+    }
+
+    const providedSecret = request.headers.get("X-Admin-Reset-Secret");
+
+    if (providedSecret !== env.ADMIN_RESET_SECRET) {
+      return json({
+        success: false,
+        message: "Secret tidak valid."
+      }, 403);
+    }
+
+    const body = await readBody(request);
+
+    if (!body || typeof body.password !== "string") {
+      return json({
+        success: false,
+        message: "Password baru tidak valid."
+      }, 400);
+    }
+
+    const newPassword = body.password;
+
+    if (newPassword.length < 12) {
+      return json({
+        success: false,
+        message: "Password minimal 12 karakter."
+      }, 400);
+    }
+
+    const admin = await env.DB.prepare(
+      "SELECT id FROM users WHERE username = ? AND role = 'admin' LIMIT 1"
+    ).bind("admin").first();
+
+    if (!admin) {
+      return json({
+        success: false,
+        message: "Akun admin tidak ditemukan."
+      }, 404);
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+
+    await env.DB.prepare(
+      "UPDATE users SET password_hash = ? WHERE id = ?"
+    ).bind(passwordHash, admin.id).run();
+
+    await env.DB.prepare(
+      "DELETE FROM sessions WHERE user_id = ?"
+    ).bind(admin.id).run();
+
+    return json({
+      success: true,
+      message: "Password admin berhasil direset. Silakan login kembali."
+    });
+  }
+
+  // MEMBUAT ADMIN PERTAMA
   if (path === "/api/setup-admin" && method === "POST") {
     if (!env.BOOTSTRAP_SECRET) {
       return json({ success: false, message: "Bootstrap secret belum dikonfigurasi." }, 503);
@@ -275,7 +338,7 @@ async function handleApi(request, env) {
     return json({ success: true, message: "Admin pertama berhasil dibuat." }, 201);
   }
 
-  // Login
+  // LOGIN
   if (path === "/api/login" && method === "POST") {
     const body = await readBody(request);
     if (!body) return json({ success: false, message: "Data login tidak valid." }, 400);
@@ -309,7 +372,7 @@ async function handleApi(request, env) {
     });
   }
 
-  // Logout
+  // LOGOUT
   if (path === "/api/logout" && method === "POST") {
     const token = getCookie(request, COOKIE_NAME);
     if (token) {
@@ -323,7 +386,7 @@ async function handleApi(request, env) {
     });
   }
 
-  // Identitas pengguna aktif
+  // IDENTITAS PENGGUNA AKTIF
   if (path === "/api/me" && method === "GET") {
     const user = await currentUser(request, env);
     if (!user) return json({ success: false, message: "Silakan login." }, 401);
@@ -339,11 +402,11 @@ async function handleApi(request, env) {
     });
   }
 
-  // Semua endpoint setelah ini memerlukan login
+  // SEMUA ENDPOINT SETELAH INI MEMERLUKAN LOGIN
   const user = await currentUser(request, env);
   if (!user) return json({ success: false, message: "Silakan login." }, 401);
 
-  // Daftar karyawan
+  // DAFTAR KARYAWAN
   if (path === "/api/employees" && method === "GET") {
     const result = await env.DB.prepare(
       "SELECT * FROM employees ORDER BY id DESC"
@@ -355,7 +418,7 @@ async function handleApi(request, env) {
     });
   }
 
-  // Tambah karyawan
+  // TAMBAH KARYAWAN
   if (path === "/api/employees" && method === "POST") {
     if (!canManage(user)) return json({ success: false, message: "Akses ditolak." }, 403);
 
@@ -386,7 +449,7 @@ async function handleApi(request, env) {
     }
   }
 
-  // Edit karyawan
+  // EDIT KARYAWAN
   const employeeMatch = path.match(/^\/api\/employees\/(\d+)$/);
 
   if (employeeMatch && method === "PUT") {
@@ -423,7 +486,7 @@ async function handleApi(request, env) {
     }
   }
 
-  // Hapus karyawan
+  // HAPUS KARYAWAN
   if (employeeMatch && method === "DELETE") {
     if (!canManage(user)) return json({ success: false, message: "Akses ditolak." }, 403);
 
@@ -438,7 +501,7 @@ async function handleApi(request, env) {
     return json({ success: true, message: "Data karyawan berhasil dihapus." });
   }
 
-  // Admin membuat akun HR atau User
+  // ADMIN MEMBUAT AKUN HR ATAU USER
   if (path === "/api/users" && method === "POST") {
     if (user.role !== "admin") {
       return json({ success: false, message: "Hanya Admin yang dapat membuat akun." }, 403);
@@ -474,7 +537,6 @@ async function handleApi(request, env) {
   return json({ success: false, message: "Endpoint tidak ditemukan." }, 404);
 }
 
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -494,4 +556,3 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-
