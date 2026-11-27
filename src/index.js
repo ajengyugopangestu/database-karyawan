@@ -516,7 +516,31 @@ async function handleApi(request, env) {
     return json({ success: true, message: "Data karyawan berhasil dihapus." });
   }
 
-  // ADMIN MEMBUAT AKUN HR ATAU USER
+  // MANAJEMEN PENGGUNA: KHUSUS ADMIN
+  if (path === "/api/users" && method === "GET") {
+    if (user.role !== "admin") {
+      return json({ success: false, message: "Hanya Admin yang dapat melihat daftar pengguna." }, 403);
+    }
+
+    const result = await env.DB.prepare(`
+      SELECT id, username, full_name, role, is_active
+      FROM users
+      ORDER BY full_name COLLATE NOCASE ASC
+    `).all();
+
+    return json({
+      success: true,
+      users: result.results.map(item => ({
+        id: String(item.id),
+        username: item.username,
+        fullName: item.full_name,
+        role: item.role,
+        isActive: Boolean(item.is_active)
+      }))
+    });
+  }
+
+  // ADMIN MEMBUAT AKUN ADMIN, HR, ATAU USER
   if (path === "/api/users" && method === "POST") {
     if (user.role !== "admin") {
       return json({ success: false, message: "Hanya Admin yang dapat membuat akun." }, 403);
@@ -530,8 +554,8 @@ async function handleApi(request, env) {
 
     if (!/^[a-zA-Z0-9._-]{3,40}$/.test(username) ||
         fullName.length < 2 || password.length < 12 ||
-        !["hr", "user"].includes(role)) {
-      return json({ success: false, message: "Data akun tidak valid." }, 400);
+        !["admin", "hr", "user"].includes(role)) {
+      return json({ success: false, message: "Username harus 3–40 karakter, nama minimal 2 karakter, password minimal 12 karakter, dan role harus valid." }, 400);
     }
 
     try {
@@ -547,6 +571,65 @@ async function handleApi(request, env) {
       }
       throw error;
     }
+  }
+
+  // ADMIN MEMPERBARUI DATA, ROLE, STATUS, ATAU PASSWORD PENGGUNA
+  const userMatch = path.match(/^\\/api\\/users\\/(\\d+)$/);
+  if (userMatch && method === "PUT") {
+    if (user.role !== "admin") {
+      return json({ success: false, message: "Hanya Admin yang dapat mengubah akun." }, 403);
+    }
+
+    const targetId = Number(userMatch[1]);
+    const body = await readBody(request);
+    const fullName = String(body?.fullName || "").trim();
+    const role = String(body?.role || "");
+    const isActive = body?.isActive === true;
+    const password = String(body?.password || "");
+
+    if (fullName.length < 2 || !["admin", "hr", "user"].includes(role) ||
+        (password && password.length < 12) ||
+        typeof body?.isActive !== "boolean") {
+      return json({ success: false, message: "Data akun tidak valid. Password baru minimal 12 karakter." }, 400);
+    }
+
+    const target = await env.DB.prepare(
+      "SELECT id, role, is_active FROM users WHERE id = ? LIMIT 1"
+    ).bind(targetId).first();
+
+    if (!target) return json({ success: false, message: "Akun pengguna tidak ditemukan." }, 404);
+
+    if (targetId === Number(user.id) && (!isActive || role !== "admin")) {
+      return json({ success: false, message: "Anda tidak dapat menonaktifkan akun sendiri atau mengubah role Admin milik sendiri." }, 400);
+    }
+
+    const removesAdmin = target.role === "admin" && (role !== "admin" || !isActive);
+    if (removesAdmin && target.is_active) {
+      const count = await env.DB.prepare(
+        "SELECT COUNT(*) AS total FROM users WHERE role = 'admin' AND is_active = 1"
+      ).first();
+      if (Number(count.total) <= 1) {
+        return json({ success: false, message: "Tidak dapat menonaktifkan atau menurunkan role Admin terakhir." }, 400);
+      }
+    }
+
+    if (password) {
+      await env.DB.prepare(`
+        UPDATE users SET full_name = ?, role = ?, is_active = ?, password_hash = ?
+        WHERE id = ?
+      `).bind(fullName, role, isActive ? 1 : 0, await hashPassword(password), targetId).run();
+    } else {
+      await env.DB.prepare(`
+        UPDATE users SET full_name = ?, role = ?, is_active = ?
+        WHERE id = ?
+      `).bind(fullName, role, isActive ? 1 : 0, targetId).run();
+    }
+
+    // Cabut seluruh sesi akun yang diubah agar perubahan role/status/password
+    // langsung berlaku pada perangkat yang sedang login.
+    await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(targetId).run();
+
+    return json({ success: true, message: "Akun pengguna berhasil diperbarui. Pengguna perlu login kembali." });
   }
 
   return json({ success: false, message: "Endpoint tidak ditemukan." }, 404);
