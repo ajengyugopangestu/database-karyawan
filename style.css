@@ -479,3 +479,7 @@ body.auth-pending .sidebar,body.auth-pending .main{display:none}
 .birthday-tag.birthday-h3{background:#fff8df;color:#9a7514}
 .birthday-empty{font-size:11px;color:#98a3b4;padding:12px 2px}
 @media(max-width:700px){.birthday-card{padding:16px}.birthday-heading{align-items:stretch;flex-direction:column}.birthday-notify-btn{width:100%}.birthday-list{grid-template-columns:1fr}}
+
+
+/* Logo resmi PT Putranata Adi Mandiri */
+.brand-logo{width:42px;height:42px;flex:0 0 42px;object-fit:contain;display:block}
