@@ -483,3 +483,26 @@ body.auth-pending .sidebar,body.auth-pending .main{display:none}
 
 /* Logo resmi PT Putranata Adi Mandiri */
 .brand-logo{width:42px;height:42px;flex:0 0 42px;object-fit:contain;display:block}
+
+/* PeopleDesk additional modules */
+.two-column-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.inline-actions{display:flex;gap:8px;flex-wrap:wrap}
+.calendar-toolbar{display:flex;align-items:center;justify-content:center;gap:18px;padding:18px}
+.calendar-toolbar h3{margin:0;min-width:180px;text-align:center;text-transform:capitalize}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:0 18px 18px}
+.calendar-weekday{text-align:center;font-size:12px;font-weight:700;color:#75839a;padding:8px}
+.calendar-day{min-height:72px;border:1px solid #e7ebf2;border-radius:10px;background:#fff;text-align:left;padding:8px;color:#26344d}
+button.calendar-day{cursor:pointer}.calendar-day.muted{border:0;background:transparent}
+.calendar-day.today{border-color:#3569e8;background:#f2f6ff}.calendar-day.has-birthday{background:#fff8e9;border-color:#f2d99b}
+.calendar-day small{display:block;margin-top:8px;color:#9a7514;font-size:10px}
+.calendar-selected{border-top:1px solid #edf0f5;padding:16px 20px;line-height:1.8;color:#39475e}
+.profile-card{padding:24px}.profile-identity{display:flex;align-items:center;gap:18px}.profile-avatar{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;background:#eaf0ff;color:#3569e8;font-size:22px;font-weight:800}
+.profile-identity h3{margin:0 0 5px}.profile-identity p{margin:0 0 8px;color:#75839a}
+.password-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:0 20px 20px}
+.password-form label{display:grid;gap:7px;font-size:13px;font-weight:600}.password-form input{width:100%;padding:11px;border:1px solid #dce2ec;border-radius:8px;font:inherit}
+.password-form .form-error,.password-form button{grid-column:1/-1}
+.settings-company{display:flex;align-items:center;gap:18px;padding:22px}.settings-company img{width:64px;height:64px;object-fit:contain}
+.settings-company h3{margin:0 0 5px}.settings-company p{margin:0 0 4px;color:#64748b}.settings-company small,.settings-note{color:#75839a}
+.settings-note{padding:0 20px 18px;font-size:12px}.settings-list{padding:0 20px 18px}.settings-list div{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #edf0f5;gap:15px}.settings-list span{color:#75839a}
+@media(max-width:850px){.two-column-grid{grid-template-columns:1fr}.password-form{grid-template-columns:1fr}.calendar-day{min-height:58px;padding:5px}.calendar-day small{font-size:9px}}
+@media print{body *{visibility:hidden!important}#reportsPage,#reportsPage *{visibility:visible!important}#reportsPage{position:absolute;left:0;top:0;width:100%;display:block!important}.sidebar,.topbar,.app-footer,.welcome button{display:none!important}.content-card{box-shadow:none!important}}
