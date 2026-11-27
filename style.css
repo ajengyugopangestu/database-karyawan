@@ -508,3 +508,15 @@ button.calendar-day{cursor:pointer}.calendar-day.muted{border:0;background:trans
 @media print{body *{visibility:hidden!important}#reportsPage,#reportsPage *{visibility:visible!important}#reportsPage{position:absolute;left:0;top:0;width:100%;display:block!important}.sidebar,.topbar,.app-footer,.welcome button{display:none!important}.content-card{box-shadow:none!important}}
 /* Flexible KPI cards for the expanded dashboard */
 .stats-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+
+/* Attendance module */
+.attendance-entry{margin-bottom:18px}.attendance-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:0 20px 20px}
+.attendance-form label,.attendance-filters label{display:grid;gap:7px;font-size:13px;font-weight:600;color:#39475e}
+.attendance-form input,.attendance-form select,.attendance-filters input,.attendance-filters select{width:100%;min-width:0;padding:10px 11px;border:1px solid #dce2ec;border-radius:8px;background:#fff;color:#26344d;font:inherit}
+.attendance-form-actions{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.attendance-form-actions span{font-size:12px;color:#64748b}
+.attendance-filters{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;gap:14px;align-items:end;padding:18px;margin-bottom:18px}
+.attendance-table{min-width:1000px}.attendance-status{display:inline-block;padding:4px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#eef2f7;color:#475569}
+.attendance-status.status-hadir{background:#e8f7ee;color:#187443}.attendance-status.status-izin,.attendance-status.status-cuti{background:#fff5dc;color:#91620b}.attendance-status.status-sakit{background:#eaf2ff;color:#2457a6}.attendance-status.status-alpha{background:#ffebeb;color:#b42318}
+.btn-small{padding:6px 10px;font-size:11px}
+@media(max-width:850px){.attendance-form{grid-template-columns:1fr 1fr}.attendance-filters{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.attendance-form,.attendance-filters{grid-template-columns:1fr}.attendance-form-actions{align-items:stretch}.attendance-form-actions .btn{width:100%}}
