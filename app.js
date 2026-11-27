@@ -158,6 +158,8 @@ async function initializeApplication() {
         document.body.classList.remove("auth-pending");
         document.body.classList.add("authenticated");
         startSessionMonitoring();
+        if (birthdayNotificationTimer) clearInterval(birthdayNotificationTimer);
+        birthdayNotificationTimer = setInterval(renderBirthdayReminders, 60000);
     } catch (error) {
         stopSessionMonitoring();
         currentUser = null;
@@ -190,6 +192,8 @@ $("loginForm").addEventListener("submit", async event => {
 
 $("logoutButton").addEventListener("click", async () => {
     stopSessionMonitoring();
+    if (birthdayNotificationTimer) clearInterval(birthdayNotificationTimer);
+    birthdayNotificationTimer = null;
     try { await apiRequest("/api/logout", { method: "POST", body: "{}" }); }
     catch (error) { console.error("Logout:", error); }
     currentUser = null;
@@ -423,6 +427,70 @@ $("userForm").addEventListener("submit", async event => {
 // DASHBOARD
 // ======================================
 
+
+/* PENGINGAT ULANG TAHUN KARYAWAN */
+let birthdayNotificationTimer = null;
+function localDateKey(date) {
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+function getBirthdayReminders() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    return employees.filter(employee => /^\d{4}-\d{2}-\d{2}$/.test(employee.birthDate || ""))
+        .map(employee => {
+            const parts = employee.birthDate.split("-");
+            const month = Number(parts[1]), day = Number(parts[2]);
+            let nextBirthday = new Date(today.getFullYear(), month - 1, day);
+            if (Date.UTC(nextBirthday.getFullYear(), nextBirthday.getMonth(), nextBirthday.getDate()) < todayUtc) {
+                nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
+            }
+            const birthdayUtc = Date.UTC(nextBirthday.getFullYear(), nextBirthday.getMonth(), nextBirthday.getDate());
+            return { ...employee, nextBirthday, daysUntil: Math.round((birthdayUtc - todayUtc) / 86400000) };
+        })
+        .filter(item => item.daysUntil <= 30)
+        .sort((a, b) => a.daysUntil - b.daysUntil || (a.name || "").localeCompare(b.name || ""));
+}
+function renderBirthdayReminders() {
+    const reminders = getBirthdayReminders();
+    const todayCount = reminders.filter(item => item.daysUntil === 0).length;
+    const h3Count = reminders.filter(item => item.daysUntil === 3).length;
+    $("birthdaySummary").textContent = todayCount || h3Count
+        ? todayCount + " ulang tahun hari ini · " + h3Count + " ulang tahun dalam 3 hari"
+        : "Tidak ada ulang tahun hari ini atau dalam 3 hari ke depan.";
+    $("birthdayList").innerHTML = reminders.length ? reminders.map(item => {
+        const dateText = item.nextBirthday.toLocaleDateString("id-ID", { day: "2-digit", month: "long" });
+        const label = item.daysUntil === 0 ? "Hari ini" : item.daysUntil === 3 ? "H-3" : "H-" + item.daysUntil;
+        const tagClass = item.daysUntil === 0 ? "birthday-today" : item.daysUntil === 3 ? "birthday-h3" : "";
+        return '<div class="birthday-row"><div class="birthday-avatar">' + escapeHTML(initials(item.name)) +
+            '</div><div class="birthday-person"><strong>' + escapeHTML(item.name || "Tanpa nama") +
+            '</strong><small>' + escapeHTML(item.department || item.position || "Karyawan") + ' · ' + dateText +
+            '</small></div><span class="birthday-tag ' + tagClass + '">' + label + '</span></div>';
+    }).join("") : '<div class="birthday-empty">Belum ada tanggal lahir atau tidak ada ulang tahun dalam 30 hari ke depan.</div>';
+    if ("Notification" in window && Notification.permission === "granted") {
+        reminders.filter(item => item.daysUntil === 0 || item.daysUntil === 3).forEach(item => {
+            const kind = item.daysUntil === 0 ? "today" : "h3";
+            const key = "birthday-" + localDateKey(new Date()) + "-" + item.id + "-" + kind;
+            if (sessionStorage.getItem(key)) return;
+            const title = item.daysUntil === 0 ? "Ulang tahun karyawan hari ini 🎂" : "Pengingat ulang tahun H-3 🎂";
+            const body = item.daysUntil === 0 ? "Hari ini " + item.name + " berulang tahun." : item.name + " akan berulang tahun 3 hari lagi.";
+            const notification = new Notification(title, { body, tag: key });
+            notification.onclick = () => { window.focus(); notification.close(); };
+            sessionStorage.setItem(key, "sent");
+        });
+    }
+}
+$("enableBirthdayNotifications").addEventListener("click", async () => {
+    if (!("Notification" in window)) return showToast("Browser ini belum mendukung notifikasi.");
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            showToast("Notifikasi ulang tahun berhasil diaktifkan.");
+            renderBirthdayReminders();
+        } else showToast("Izin notifikasi belum diberikan. Periksa pengaturan browser.");
+    } catch (error) { showToast("Tidak dapat mengaktifkan notifikasi browser."); }
+});
+
 function renderDashboard() {
     $("totalEmployees").textContent = employees.length;
 
@@ -575,6 +643,7 @@ function updateDepartmentFilter() {
 function refresh() {
     renderDashboard();
     renderEmployees();
+    renderBirthdayReminders();
 }
 
 // ======================================
