@@ -587,27 +587,18 @@ function renderEmployees() {
             <td>
                 <div class="actions">
                     <button class="action-btn detail"
-                        data-detail="${escapeHTML(e.id)}">
-                        Detail Karyawan
-                    </button>
-
-                    <button class="action-btn"
-                        data-edit="${escapeHTML(e.id)}">
-                        Edit
-                    </button>
-
-                    <button class="action-btn delete"
-                        data-delete="${escapeHTML(e.id)}">
-                        Hapus
-                    </button>
+                        data-detail="${escapeHTML(e.id)}">Detail Karyawan</button>
+                    ${canManageEmployees ? `
+                    <button class="action-btn" data-edit="${escapeHTML(e.id)}">Edit</button>
+                    <button class="action-btn delete" data-delete="${escapeHTML(e.id)}">Hapus</button>
+                    ` : ""}
                 </div>
             </td>
         </tr>
     `).join("");
 
-    $("employeeTable").querySelectorAll("[data-manage-only]").forEach(el => {
-        el.hidden = !canManageEmployees;
-    });
+    const actionHeading = $("employeeActionHeading");
+    if (actionHeading) actionHeading.textContent = canManageEmployees ? "Aksi" : "Detail";
 
     $("emptyState").hidden = filtered.length !== 0;
 
@@ -739,6 +730,7 @@ function openDetail(employee) {
 
     $("qrcodePanel").hidden = true;
     $("employeeQRCode").innerHTML = "";
+    $("editFromDetail").hidden = !canManageEmployees;
 
     $("detailModal").hidden = false;
     document.body.style.overflow = "hidden";
@@ -931,6 +923,7 @@ document.addEventListener("keydown", e => {
 
 $("employeeForm").addEventListener("submit", async e => {
     e.preventDefault();
+    if (!canManageEmployees) return showToast("Akun User tidak memiliki izin untuk mengubah data karyawan.");
 
     const data = readForm();
     const id = $("editId").value;
@@ -987,6 +980,10 @@ $("employeeTable").addEventListener("click", e => {
     const detail = e.target.closest("[data-detail]");
     const edit = e.target.closest("[data-edit]");
     const del = e.target.closest("[data-delete]");
+
+    if ((edit || del) && !canManageEmployees) {
+        return showToast("Akun User hanya memiliki akses untuk melihat data karyawan.");
+    }
 
     if (detail) {
         const employee = employees.find(
