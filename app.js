@@ -1,8 +1,8 @@
 
-const STORAGE_KEY = "peopledesk_employees_v1";
-
-let employees = loadEmployees();
+let employees = [];
+let currentUser = null;
 let detailEmployeeId = null;
+let canManageEmployees = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,22 +25,88 @@ const fields = [
 ];
 
 // ======================================
-// PENYIMPANAN DATA
+// API CLOUDFLARE WORKER + D1
 // ======================================
 
-function loadEmployees() {
+async function apiRequest(path, options = {}) {
+    const response = await fetch(path, {
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        ...options
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const error = new Error(result.message || "Permintaan ke server gagal.");
+        error.status = response.status;
+        throw error;
+    }
+    return result;
+}
+
+async function loadEmployees() {
+    const result = await apiRequest("/api/employees", { method: "GET" });
+    employees = Array.isArray(result.employees) ? result.employees : [];
+    refresh();
+}
+
+async function loadCurrentUser() {
+    const result = await apiRequest("/api/me", { method: "GET" });
+    currentUser = result.user;
+    canManageEmployees = ["admin", "hr"].includes(currentUser.role);
+    const name = currentUser.fullName || currentUser.username || "User";
+    $("userName").textContent = name;
+    $("userRole").textContent = String(currentUser.role || "user").toUpperCase();
+    $("userAvatar").textContent = initials(name);
+    document.querySelectorAll("[data-manage-only]").forEach(el => el.hidden = !canManageEmployees);
+    $("storageStatus").textContent = "Cloudflare D1";
+}
+
+async function initializeApplication() {
+    document.body.classList.add("auth-pending");
     try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved) : [];
+        await loadCurrentUser();
+        await loadEmployees();
+        document.body.classList.remove("auth-pending");
+        document.body.classList.add("authenticated");
     } catch (error) {
-        console.error("Gagal membaca data lokal:", error);
-        return [];
+        currentUser = null;
+        document.body.classList.remove("authenticated");
+        document.body.classList.add("auth-pending");
+        if (error.status !== 401) $("loginError").textContent = error.message || "Tidak dapat terhubung ke server.";
     }
 }
 
-function saveEmployees() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
-}
+$("loginForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    $("loginError").textContent = "";
+    $("loginSubmit").disabled = true;
+    $("loginSubmit").textContent = "Memproses...";
+    try {
+        await apiRequest("/api/login", {
+            method: "POST",
+            body: JSON.stringify({ username: $("loginUsername").value.trim(), password: $("loginPassword").value })
+        });
+        $("loginForm").reset();
+        await initializeApplication();
+        if (!currentUser) throw new Error("Login gagal. Periksa username dan password.");
+    } catch (error) {
+        $("loginError").textContent = error.message || "Login gagal.";
+    } finally {
+        $("loginSubmit").disabled = false;
+        $("loginSubmit").textContent = "Masuk ke PeopleDesk";
+    }
+});
+
+$("logoutButton").addEventListener("click", async () => {
+    try { await apiRequest("/api/logout", { method: "POST", body: "{}" }); }
+    catch (error) { console.error("Logout:", error); }
+    currentUser = null;
+    employees = [];
+    document.body.classList.remove("authenticated");
+    document.body.classList.add("auth-pending");
+    $("loginPassword").value = "";
+    $("loginError").textContent = "Anda telah keluar dari aplikasi.";
+});
 
 // ======================================
 // FUNGSI BANTUAN
@@ -412,6 +478,7 @@ $("detailModal").addEventListener("click", e => {
 });
 
 $("editFromDetail").addEventListener("click", () => {
+    if (!canManageEmployees) return showToast("Anda tidak memiliki izin untuk mengedit data.");
     const employee = employees.find(
         emp => emp.id === detailEmployeeId
     );
@@ -522,12 +589,10 @@ $("downloadQRCode").addEventListener("click", () => {
 
 ["addFromDashboard", "addEmployeeBtn", "emptyAddBtn"].forEach(id => {
     const button = $(id);
-
-    if (button) {
-        button.addEventListener("click", () => {
-            openModal();
-        });
-    }
+    if (button) button.addEventListener("click", () => {
+        if (!canManageEmployees) return showToast("Hanya Admin atau HR yang dapat menambah karyawan.");
+        openModal();
+    });
 });
 
 // ======================================
@@ -560,7 +625,7 @@ document.addEventListener("keydown", e => {
 // SIMPAN DATA KARYAWAN
 // ======================================
 
-$("employeeForm").addEventListener("submit", e => {
+$("employeeForm").addEventListener("submit", async e => {
     e.preventDefault();
 
     const data = readForm();
@@ -596,35 +661,18 @@ $("employeeForm").addEventListener("submit", e => {
         return;
     }
 
-    if (id) {
-        const index = employees.findIndex(emp => emp.id === id);
-
-        if (index >= 0) {
-            employees[index] = {
-                ...employees[index],
-                ...data,
-                updatedAt: new Date().toISOString()
-            };
-        }
-    } else {
-        employees.push({
-            ...data,
-            id: window.crypto?.randomUUID
-                ? crypto.randomUUID()
-                : String(Date.now()),
-            createdAt: new Date().toISOString()
+    if (!canManageEmployees) return showToast("Anda tidak memiliki izin untuk mengubah data.");
+    try {
+        const result = await apiRequest(id ? `/api/employees/${encodeURIComponent(id)}` : "/api/employees", {
+            method: id ? "PUT" : "POST",
+            body: JSON.stringify(data)
         });
+        closeModal();
+        await loadEmployees();
+        showToast(result.message || "Data karyawan berhasil disimpan.");
+    } catch (error) {
+        $("formError").textContent = error.message || "Gagal menyimpan data.";
     }
-
-    saveEmployees();
-    closeModal();
-    refresh();
-
-    showToast(
-        id
-            ? "Data karyawan berhasil diperbarui."
-            : "Data karyawan berhasil ditambahkan."
-    );
 });
 
 // ======================================
@@ -657,18 +705,11 @@ $("employeeTable").addEventListener("click", e => {
             emp => emp.id === del.dataset.delete
         );
 
-        if (
-            employee &&
-            confirm(`Hapus data karyawan ${employee.name}?`)
-        ) {
-            employees = employees.filter(
-                emp => emp.id !== del.dataset.delete
-            );
-
-            saveEmployees();
-            refresh();
-
-            showToast("Data karyawan berhasil dihapus.");
+        if (!canManageEmployees) return showToast("Anda tidak memiliki izin untuk menghapus data.");
+        if (employee && confirm(`Hapus data karyawan ${employee.name}?`)) {
+            apiRequest(`/api/employees/${encodeURIComponent(del.dataset.delete)}`, { method: "DELETE" })
+                .then(async result => { await loadEmployees(); showToast(result.message || "Data karyawan berhasil dihapus."); })
+                .catch(error => showToast(error.message || "Gagal menghapus data."));
         }
     }
 });
@@ -758,4 +799,4 @@ $("exportBtn").addEventListener("click", () => {
 // INISIALISASI APLIKASI
 // ======================================
 
-refresh();
+initializeApplication();
